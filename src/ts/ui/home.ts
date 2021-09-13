@@ -80,7 +80,7 @@ export const initHome = async () => {
 	StorageManager.store();
 };
 
-const hideHome = () => {
+export const hideHome = () => {
 	homeScreenDiv.classList.add('hidden');
 	showChangelogButton.classList.add('hidden');
 	showChangelogText.classList.add('hidden');

@@ -4,13 +4,14 @@ import { ResourceManager } from "./resources";
 import * as THREE from "three";
 import { AudioManager } from "./audio";
 import './ui/home';
-import { initLevelSelect } from "./ui/level_select";
+import { initLevelSelect, customLevels } from "./ui/level_select";
 import { startUi, initUi } from "./ui/ui";
 import { StorageManager } from './storage';
 import { Util } from './util';
 import { initOptions } from './ui/options';
 import { Leaderboard } from './leaderboard';
-import { initHome } from './ui/home';
+import { initHome, hideHome } from './ui/home';
+import { loadLevel } from './ui/loading';
 
 OIMO.Setting.defaultGJKMargin = 0.005; // Without this, the marble is very visibly floating above stuff.
 OIMO.Setting.defaultContactPositionCorrectionAlgorithm = OIMO.PositionCorrectionAlgorithm.NGS; // Slower, but there's really only one collision object anyway so
@@ -32,6 +33,18 @@ const init = async () => {
 		startGameDialog.style.display = 'none';
 		AudioManager.context.resume();
 		startUi();
+		
+		var uri = new URL(location.href);
+		if(uri.searchParams.has("level")){
+			var levelId = parseInt(uri.searchParams.get("level"));
+			var res = customLevels.filter(p=>p.id == levelId);
+			if(res == null || res.length == 0)
+				return;	
+			var mission = res[0];
+
+			hideHome();
+			loadLevel(mission); // Initiate level loading
+		}
 	};
 	
 	loadingMessage.style.display = 'none';
@@ -43,7 +56,7 @@ const init = async () => {
 
 	// Otherwise, we need user interaction to start audio.
 	
-	if (Util.isInFullscreen()) {
+	if (Util.IsFullscreen) {
 		// No need to tell them to enter fullscreen if they're already in it
 		startGameDialog.children[0].textContent = 'Click anywhere to start';
 		startGameDialog.children[1].textContent = '';
@@ -56,7 +69,7 @@ const init = async () => {
 	});
 	window.addEventListener('keydown', (e) => {
 		if (started) return;
-		if (e.code === 'F11' && !Util.isInFullscreen()) start();
+		if (e.code === 'F11' && !Util.IsFullscreen) start();
 	});
 };
 window.onload = init;

@@ -13,7 +13,7 @@ const finalhandler = finalhandler_;
 import { shared } from './shared';
 import { getDirectoryStructure, getVersionHistory, logUserError } from './misc';
 import { getLeaderboard, submitScores, getWorldRecordSheet } from './leaderboard';
-import { getCustomLevelResource } from './customs';
+import { getCustomLevelResource, updateCLAList } from './customs';
 
 let db: Database.Database = null;
 
@@ -119,6 +119,7 @@ const initServer = (port: number) => {
 const init = () => {
 	console.log("Starting...");
 
+	setTimeout(updateCLAList, 1000*20);
 	shared.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json')).toString());
 	shared.directoryPath = path.join(__dirname, '..', shared.config.useDist? 'dist' : 'src');
 	shared.levelNameMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'level_name_map.json')).toString());

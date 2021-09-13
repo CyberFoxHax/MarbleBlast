@@ -136,6 +136,14 @@ const selectScreenStyleButton = (button: HTMLImageElement, index: number) => {
 	button.setAttribute('data-locked', '');
 	StorageManager.data.settings.screenStyle = index;
 	StorageManager.store();
+
+	if(index == 1){
+		document.documentElement.requestFullscreen();
+	}
+	else{
+		if(document.fullscreenElement)
+			document.exitFullscreen();
+	}
 };
 
 const unlockScreenStyleButtons = () => {

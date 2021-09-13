@@ -45,6 +45,8 @@ import { getCurrentLevelArray } from "./ui/level_select";
 import { Mission } from "./mission";
 import { PushButton } from "./shapes/push_button";
 import { DifFile } from "./parsing/dif_parser";
+import { Checkpoint } from "./shapes/checkpoint";
+import { EasterEgg } from "./shapes/easteregg";
 
 /** How often the physics will be updated, per second. */
 export const PHYSICS_TICK_RATE = 120;
@@ -190,7 +192,14 @@ export class Level extends Scheduler {
 		// Scan the mission for elements to determine required loading effort
 		const scanMission = (simGroup: MissionElementSimGroup) => {
 			for (let element of simGroup.elements) {
-				if ([MissionElementType.InteriorInstance, MissionElementType.Item, MissionElementType.PathedInterior, MissionElementType.StaticShape, MissionElementType.TSStatic].includes(element._type)) {
+				var arr = [
+					MissionElementType.InteriorInstance,
+					MissionElementType.Item,
+					MissionElementType.PathedInterior,
+					MissionElementType.StaticShape,
+					MissionElementType.TSStatic
+				];
+				if (arr.includes(element._type)) {
 					this.loadingState.total++;
 
 					// Override the end pad element. We do this because only the last finish pad element will actually do anything.
@@ -230,7 +239,7 @@ export class Level extends Scheduler {
 	async start() {
 		if (this.stopped) return;
 
-		this.restart();
+		this.restart(false);
 		for (let interior of this.interiors) await interior.onLevelStart();
 		for (let shape of this.shapes) await shape.onLevelStart();
 		AudioManager.normalizePositionalAudioVolume();
@@ -494,6 +503,7 @@ export class Level extends Scheduler {
 		if (hasCollision) this.physics.addInterior(interior);
 	}
 
+	public gems:Gem[] = [];
 	async addShape(element: MissionElementStaticShape | MissionElementItem) {
 		let shape: Shape;
 
@@ -504,7 +514,7 @@ export class Level extends Scheduler {
 		else if (dataBlockLowerCase === "endpad") shape = new EndPad(element === this.endPadElement);
 		else if (dataBlockLowerCase === "signfinish") shape = new SignFinish();
 		else if (dataBlockLowerCase.startsWith("signplain")) shape = new SignPlain(element as MissionElementStaticShape);
-		else if (dataBlockLowerCase.startsWith("gemitem")) shape = new Gem(element as MissionElementItem), this.totalGems++;
+		else if (dataBlockLowerCase.startsWith("gemitem")) {shape = new Gem(element as MissionElementItem); this.totalGems++; this.gems.push(<Gem>shape)}
 		else if (dataBlockLowerCase === "superjumpitem") shape = new SuperJump(element as MissionElementItem);
 		else if (dataBlockLowerCase.startsWith("signcaution")) shape = new SignCaution(element as MissionElementStaticShape);
 		else if (dataBlockLowerCase === "superbounceitem") shape = new SuperBounce(element as MissionElementItem);
@@ -522,6 +532,8 @@ export class Level extends Scheduler {
 		else if (dataBlockLowerCase === "trapdoor") shape = new TrapDoor(element as MissionElementStaticShape);
 		else if (dataBlockLowerCase === "oilslick") shape = new Oilslick();
 		else if (dataBlockLowerCase === "pushbutton") shape = new PushButton();
+		else if (dataBlockLowerCase === "checkpoint") shape = new Checkpoint();
+		else if (dataBlockLowerCase === "easteregg") shape = new EasterEgg();
 
 		if (!shape) return;
 
@@ -602,7 +614,13 @@ export class Level extends Scheduler {
 	}
 
 	/** Restarts and resets the level. */
-	restart() {
+	restart(ignoreCheckpoints?:boolean) {
+		if(ignoreCheckpoints === true)
+			this.activeCheckpoint = null;
+		if(this.activeCheckpoint !== null){
+			this.activeCheckpoint.restoreGameState();
+			return;
+		}
 		this.timeState.currentAttemptTime = 0;
 		this.timeState.gameplayClock = 0;
 		this.currentTimeTravelBonus = 0;
@@ -612,6 +630,7 @@ export class Level extends Scheduler {
 		
 		if (this.totalGems > 0) {
 			this.gemCount = 0;
+			this.pickedGems.length = 0;
 			displayGemCount(this.gemCount, this.totalGems);
 		}
 
@@ -860,7 +879,7 @@ export class Level extends Scheduler {
 			if (this.outOfBounds && !this.finishTime) {
 				// Skip the out of bounce "animation" and restart immediately
 				this.clearSchedule();
-				this.restart();
+				this.restart(false);
 				return;
 			} else if (this.heldPowerUp) {
 				this.replay.recordUsePowerUp(this.heldPowerUp);
@@ -1005,7 +1024,7 @@ export class Level extends Scheduler {
 
 		// Handle pressing of the restart button
 		if (!this.finishTime && isPressed('restart') && !this.pressingRestart) {
-			this.restart();
+			this.restart(false);
 			this.pressingRestart = true;
 		} else if (!isPressed('restart')) {
 			this.pressingRestart = false;
@@ -1133,6 +1152,8 @@ export class Level extends Scheduler {
 		}
 	}
 
+	public pickedGems:Gem[] = [];
+
 	pickUpGem(gem: Gem) {
 		this.gemCount++;
 		let string: string;
@@ -1162,6 +1183,7 @@ export class Level extends Scheduler {
 
 		displayAlert(string);
 		displayGemCount(this.gemCount, this.totalGems);
+		this.pickedGems.push(gem);
 	}
 
 	addTimeTravelBonus(bonus: number, timeToRevert: number) {
@@ -1185,7 +1207,14 @@ export class Level extends Scheduler {
 		setCenterText('outofbounds');
 		AudioManager.play('whoosh.wav');
 
-		if (this.replay.mode !== 'playback') this.schedule(this.timeState.currentAttemptTime + 2000, () => this.restart(), 'oobRestart');
+		if (this.replay.mode !== 'playback')
+			this.schedule(this.timeState.currentAttemptTime + 2000, () => this.restart(false), 'oobRestart');
+	}
+
+	public activeCheckpoint: Checkpoint = null;
+
+	touchCheckpoint(p:Checkpoint){
+		this.activeCheckpoint = p;
 	}
 
 	touchFinish(completionOfImpactOverride?: number) {

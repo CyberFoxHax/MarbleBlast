@@ -61,7 +61,7 @@ setupButton(pauseYesButton, 'common/yes', () => {
 setupButton(pauseNoButton, 'common/no', () => state.currentLevel.unpause());
 setupButton(pauseRestartButton, 'common/restart', () => {
 	state.currentLevel.unpause();
-	state.currentLevel.restart();
+	state.currentLevel.restart(true);
 });
 
 pauseReplayButton.addEventListener('click', async (e) => {
@@ -248,7 +248,7 @@ const viewReplayButton = document.querySelector('#finish-view-replay') as HTMLIm
 setupButton(replayButton, 'endgame/replay', () => {
 	// Restart the level
 	finishScreenDiv.classList.add('hidden');
-	state.currentLevel.restart();
+	state.currentLevel.restart(true);
 	document.documentElement.requestPointerLock();
 });
 setupButton(continueButton, 'endgame/continue', () => stopAndExit());
@@ -365,6 +365,10 @@ export const nameEntryButton = nameEntryScreenDiv.querySelector('#name-entry-con
 setupButton(nameEntryButton, 'common/ok', async () => {
 	let trimmed = nameEntryInput.value.trim();
 
+	if(nameEntryInput.value.length == 0){
+		nameEntryScreenDiv.classList.add('hidden');
+		return;
+	}
 	if (trimmed.length < 2) {
 		alert("Please enter a proper name for usage in the online leaderboard.");
 		return;
@@ -416,7 +420,7 @@ export const handlePauseScreenGamepadInput = (gamepad: Gamepad) => {
 	// Restart button to restart
 	if (gamepad.buttons[8].value > 0.5 && !previousButtonState[8]) {
 		state.currentLevel.unpause();
-		state.currentLevel.restart();
+		state.currentLevel.restart(true);
 		state.currentLevel.pressingRestart = true;
 		AudioManager.play('buttonpress.wav');
 	}

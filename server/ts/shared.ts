@@ -1,7 +1,7 @@
 import * as Database from 'better-sqlite3';
 
 /** A custom levels archive entry. */
-interface CLAEntry {
+export interface CLAEntry {
 	id: number,
 	baseName: string,
 	gameType: string,
